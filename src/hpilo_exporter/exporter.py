@@ -5,6 +5,7 @@ from __future__ import print_function
 from _socket import gaierror
 import sys
 import hpilo
+import ssl
 
 import time
 import prometheus_metrics
@@ -68,11 +69,20 @@ class RequestHandler(BaseHTTPRequestHandler):
         if url.path == self.server.endpoint and ilo_host and ilo_user and ilo_password and ilo_port:
 
             ilo = None
+            ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            # Sadly, ancient iLO's aren't dead yet, so let's enable sslv3 by default
+            ssl_context.options &= ~ssl.OP_NO_SSLv3
+            ssl_context.check_hostname = False
+            ssl_context.set_ciphers(('ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+HIGH:'
+            'DH+HIGH:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+HIGH:RSA+3DES:!aNULL:'
+            '!eNULL:!MD5'))
+
             try:
                 ilo = hpilo.Ilo(hostname=ilo_host,
                                 login=ilo_user,
                                 password=ilo_password,
-                                port=ilo_port, timeout=10)
+                                port=ilo_port, timeout=10,
+                                ssl_context=ssl_context)
             except hpilo.IloLoginFailed:
                 print("ILO login failed")
                 self.return_error()
@@ -81,6 +91,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.return_error()
             except hpilo.IloCommunicationError as e:
                 print(e)
+                self.return_error()
 
             # get product and server name
             try:
@@ -99,6 +110,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             embedded_health = ilo.get_embedded_health()
             health_at_glance = embedded_health['health_at_a_glance']
             
+
+
             if health_at_glance is not None:
                 for key, value in health_at_glance.items():
                     for status in value.items():
@@ -113,26 +126,21 @@ class RequestHandler(BaseHTTPRequestHandler):
                             else:
                                 prometheus_metrics.gauges[gauge].labels(product_name=product_name,
                                                                         server_name=server_name).set(2)
-            #for iLO3 patch network
-            if ilo.get_fw_version()["management_processor"] == 'iLO3':
-                print_err('Unknown iLO nic status')
-            else:
-                # get nic information
-                for nic_name,nic in embedded_health['nic_information'].items():
-                   try:
-                       value = ['OK','Disabled','Unknown','Link Down'].index(nic['status'])
-                   except ValueError:
-                       value = 4
-                       print_err('unrecognised nic status: {}'.format(nic['status']))
-
-                   prometheus_metrics.hpilo_network_gauge.labels(product_name=product_name,
-                                                                    server_name=server_name).set(value)
 
             # get firmware version
             fw_version = ilo.get_fw_version()["firmware_version"]
             # prometheus_metrics.hpilo_firmware_version.set(fw_version)
             prometheus_metrics.hpilo_firmware_version.labels(product_name=product_name,
                                                              server_name=server_name).set(fw_version)
+            # get temperature informations
+            for temp in embedded_health['temperature']:
+                value = embedded_health['temperature'][temp]['currentreading'][0]
+                if value != "N":
+                    print(temp+" has value "+str(value))
+                    prometheus_metrics.hpilo_temperature_status_gauge.labels(product_name=product_name,
+                                                            server_name=server_name,
+                                                            sensor=temp).set(value)
+
 
             # get the amount of time the request took
             REQUEST_TIME.observe(time.time() - start_time)
@@ -173,8 +181,8 @@ class ILOExporterServer(object):
         self.endpoint = endpoint
 
     def print_info(self):
-        print_err("Starting exporter on: http://{}:{}{}".format(self._address, self._port, self.endpoint))
-        print_err("Press Ctrl+C to quit")
+        print("Starting exporter on: http://{}:{}{}".format(self._address, self._port, self.endpoint))
+        print("Press Ctrl+C to quit")
 
     def run(self):
         self.print_info()
@@ -186,5 +194,5 @@ class ILOExporterServer(object):
             while True:
                 server.handle_request()
         except KeyboardInterrupt:
-            print_err("Killing exporter")
+            print("Killing exporter")
             server.server_close()

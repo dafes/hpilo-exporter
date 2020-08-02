@@ -17,6 +17,8 @@ hpilo_network_gauge = Gauge('hpilo_network', 'HP iLO network status', ["product_
 hpilo_temperature_gauge = Gauge('hpilo_temperature', 'HP iLO temperature status', ["product_name", "server_name"])
 hpilo_firmware_version = Gauge('hpilo_firmware_version', 'HP iLO firmware version', ["product_name", "server_name"])
 
+hpilo_temperature_status_gauge  = Gauge('hpilo_temperature_status', 'HP iLO temperature status', ["product_name", "server_name", "sensor"])
+
 gauges = {
     'hpilo_vrm_gauge': hpilo_vrm_gauge,
     'hpilo_drive_gauge': hpilo_drive_gauge,
@@ -30,4 +32,5 @@ gauges = {
     'hpilo_network_gauge': hpilo_network_gauge,
     'hpilo_temperature_gauge': hpilo_temperature_gauge,
     'hpilo_firmware_version': hpilo_firmware_version,
+    'hpilo_temperature_status_gauge' : hpilo_temperature_status_gauge
 }
