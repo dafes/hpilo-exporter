@@ -1,7 +1,7 @@
 import io
 from setuptools import setup, find_packages
 
-VERSION = "0.4.4"
+VERSION = "0.5.0"
 PACKAGE_NAME = "hpilo-exporter"
 SOURCE_DIR_NAME = "src"
 
@@ -15,8 +15,8 @@ setup(
     name=PACKAGE_NAME,
     version=VERSION,
     description="Prometheus exporter for HP iLO metrics",
-    author="Joe Stringer",
-    author_email="joe.stringer@infinityworks.com",
+    author="Joe Stringer, Peter.Random",
+    author_email="joe.stringer@infinityworks.com, info@dafes.de",
     long_description=readme(),
     long_description_content_type="text/markdown",
     url="https://github.com/infinityworks/hpilo-exporter",
@@ -30,14 +30,14 @@ setup(
         'Development Status :: 4 - Beta',
         'Intended Audience :: System Administrators',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python',
         'Topic :: Internet :: WWW/HTTP',
     ],
     install_requires=[
         "prometheus-client",
-        "python-hpilo",
+        "python-hpilo"
     ],
     entry_points={
         'console_scripts': [

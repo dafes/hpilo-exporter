@@ -8,12 +8,11 @@ import hpilo
 
 import time
 import prometheus_metrics
-from BaseHTTPServer import BaseHTTPRequestHandler
-from BaseHTTPServer import HTTPServer
-from SocketServer import ForkingMixIn
+from http.server import BaseHTTPRequestHandler,HTTPServer
+from socketserver import ForkingMixIn
 from prometheus_client import generate_latest, Summary
-from urlparse import parse_qs
-from urlparse import urlparse
+from urllib.parse import parse_qs
+from urllib.parse import urlparse
 
 
 def print_err(*args, **kwargs):
@@ -61,7 +60,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             ilo_port = int(query_components['ilo_port'][0])
             ilo_user = query_components['ilo_user'][0]
             ilo_password = query_components['ilo_password'][0]
-        except KeyError, e:
+        except KeyError as e:
             print_err("missing parameter %s" % e)
             self.return_error()
             error_detected = True
@@ -80,7 +79,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             except gaierror:
                 print("ILO invalid address or port")
                 self.return_error()
-            except hpilo.IloCommunicationError, e:
+            except hpilo.IloCommunicationError as e:
                 print(e)
 
             # get product and server name
@@ -126,10 +125,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                        value = 4
                        print_err('unrecognised nic status: {}'.format(nic['status']))
 
-                   prometheus_metrics.hpilo_nic_status_gauge.labels(product_name=product_name,
-                                                                    server_name=server_name,
-                                                                    nic_name=nic_name,
-                                                                    ip_address=nic['ip_address']).set(value)
+                   prometheus_metrics.hpilo_network_gauge.labels(product_name=product_name,
+                                                                    server_name=server_name).set(value)
 
             # get firmware version
             fw_version = ilo.get_fw_version()["firmware_version"]
