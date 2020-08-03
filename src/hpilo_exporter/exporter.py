@@ -6,6 +6,7 @@ from _socket import gaierror
 import sys
 import hpilo
 import ssl
+import os
 
 import time
 import prometheus_metrics
@@ -57,10 +58,11 @@ class RequestHandler(BaseHTTPRequestHandler):
         ilo_user = None
         ilo_password = None
         try:
-            ilo_host = query_components['ilo_host'][0]
-            ilo_port = int(query_components['ilo_port'][0])
-            ilo_user = query_components['ilo_user'][0]
-            ilo_password = query_components['ilo_password'][0]
+            ilo_host = query_components.get('ilo_host', [''])[0] or os.environ['ILO_HOST']
+            ilo_port = int(query_components.get('ilo_port', [''])[0] or os.environ['ILO_PORT'])
+            ilo_user = query_components.get('ilo_user', [''])[0] or os.environ['ILO_USER']
+            ilo_password = query_components.get('ilo_password', [''])[0] or os.environ['ILO_PASSWORD']
+
         except KeyError as e:
             print_err("missing parameter %s" % e)
             self.return_error()

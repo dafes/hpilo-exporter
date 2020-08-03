@@ -3,12 +3,16 @@ Entrypoint for the application
 """
 
 import argparse
+import ssl
+import platform
 
 from exporter import ILOExporterServer
 
 
 
 def main():
+    print("HP ILO Metrics Exporter (Python %s, OpenSSL %s)" % (platform.python_version(), ssl.OPENSSL_VERSION))
+
     parser = argparse.ArgumentParser(description='Exports ilo heath_at_a_glance state to Prometheus')
 
     parser.add_argument('--address', type=str, dest='address', default='0.0.0.0', help='address to serve on')
