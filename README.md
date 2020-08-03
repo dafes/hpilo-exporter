@@ -162,7 +162,7 @@ Here is an example of Docker Compose deployment:
 ```yml
 version: '3.7'
 services:
-  cerebro:
+  hpilo_exporter:
     image: dafes/hpilo-exporter:{{ hpilo_exporter_version }}
     container_name: hpilo_exporter
     ports:
