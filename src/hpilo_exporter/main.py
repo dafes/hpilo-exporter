@@ -6,12 +6,12 @@ import argparse
 import ssl
 import platform
 
+from logger import get_module_logger
 from exporter import ILOExporterServer
 
 
-
 def main():
-    print("HP ILO Metrics Exporter (Python %s, OpenSSL %s)" % (platform.python_version(), ssl.OPENSSL_VERSION))
+    get_module_logger("main").info("HP ILO Metrics Exporter (Python %s, OpenSSL %s)" % (platform.python_version(), ssl.OPENSSL_VERSION))
 
     parser = argparse.ArgumentParser(description='Exports ilo heath_at_a_glance state to Prometheus')
 

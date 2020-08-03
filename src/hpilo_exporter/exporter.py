@@ -16,9 +16,10 @@ from prometheus_client import generate_latest, Summary
 from urllib.parse import parse_qs
 from urllib.parse import urlparse
 
+from logger import get_module_logger
 
 def print_err(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
+    get_module_logger("exporter").error(*args, file=sys.stderr, **kwargs)
 
 
 # Create a metric to track time spent and requests made.
@@ -53,6 +54,10 @@ class RequestHandler(BaseHTTPRequestHandler):
         error_detected = False
         query_components = parse_qs(urlparse(self.path).query)
 
+        # 127.0.0.1 - - [03/Aug/2020 10:15:09] "GET /metrics?ilo_host=192.168.220.188&ilo_port=443&ilo_user=prometheus&ilo_password=xzcwjikomEvkqidm4t HTTP/1.1" 200 -
+
+        get_module_logger("exporter").info("{} GET {}".format(self.client_address ,self.path))
+
         ilo_host = None
         ilo_port = None
         ilo_user = None
@@ -64,7 +69,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             ilo_password = query_components.get('ilo_password', [''])[0] or os.environ['ILO_PASSWORD']
 
         except KeyError as e:
-            print_err("missing parameter %s" % e)
+            get_module_logger("exporter").error("missing parameter %s" % e)
             self.return_error()
             error_detected = True
 
@@ -86,13 +91,13 @@ class RequestHandler(BaseHTTPRequestHandler):
                                 port=ilo_port, timeout=10,
                                 ssl_context=ssl_context)
             except hpilo.IloLoginFailed:
-                print("ILO login failed")
+                get_module_logger("exporter").error("ILO login failed")
                 self.return_error()
             except gaierror:
-                print("ILO invalid address or port")
+                get_module_logger("exporter").error("ILO invalid address or port")
                 self.return_error()
             except hpilo.IloCommunicationError as e:
-                print(e)
+                get_module_logger("exporter").error(e)
                 self.return_error()
 
             # get product and server name
@@ -138,7 +143,6 @@ class RequestHandler(BaseHTTPRequestHandler):
             for temp in embedded_health['temperature']:
                 value = embedded_health['temperature'][temp]['currentreading'][0]
                 if value != "N":
-                    print(temp+" has value "+str(value))
                     prometheus_metrics.hpilo_temperature_status_gauge.labels(product_name=product_name,
                                                             server_name=server_name,
                                                             sensor=temp).set(value)
@@ -146,6 +150,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
             # get the amount of time the request took
             REQUEST_TIME.observe(time.time() - start_time)
+            get_module_logger("exporter").info("REQUEST_TIME: {}s".format(str(REQUEST_TIME._sum._value)))
 
             # generate and publish metrics
             metrics = generate_latest(prometheus_metrics.registry)
@@ -171,6 +176,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.send_response(404)
                 self.end_headers()
 
+    def log_message(self, format, *args):
+        return
 
 class ILOExporterServer(object):
     """
@@ -183,8 +190,7 @@ class ILOExporterServer(object):
         self.endpoint = endpoint
 
     def print_info(self):
-        print("Starting exporter on: http://{}:{}{}".format(self._address, self._port, self.endpoint))
-        print("Press Ctrl+C to quit")
+        get_module_logger("exporter").info("Starting exporter on: http://{}:{}{}".format(self._address, self._port, self.endpoint))
 
     def run(self):
         self.print_info()
@@ -196,5 +202,5 @@ class ILOExporterServer(object):
             while True:
                 server.handle_request()
         except KeyboardInterrupt:
-            print("Killing exporter")
+            get_module_logger("exporter").info("Killing exporter")
             server.server_close()
